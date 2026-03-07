@@ -1,0 +1,20 @@
+bundle:
+  name: dotnet-ops-behavior
+  version: 1.0.0
+  description: >-
+    Adds dotnet-ops agent with cross-platform shell support.
+    Compose onto any bundle for .NET CLI capabilities on Windows, Linux, or macOS.
+
+tools:
+  - module: tool-bash
+    source: git+https://github.com/microsoft/amplifier-module-tool-bash@main
+  - module: tool-pwsh
+    source: git+https://github.com/colombod/amplifier-module-tool-pwsh@main
+    config:
+      safety_profile: standard
+  - module: tool-filesystem
+    source: git+https://github.com/microsoft/amplifier-module-tool-filesystem@main
+
+context:
+  include:
+    - dotnet-ops:context/delegation-instructions.md
