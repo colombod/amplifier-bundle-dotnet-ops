@@ -8,10 +8,6 @@ bundle:
 tools:
   - module: tool-bash
     source: git+https://github.com/microsoft/amplifier-module-tool-bash@main
-  - module: tool-pwsh
-    source: git+https://github.com/colombod/amplifier-module-tool-pwsh@main
-    config:
-      safety_profile: standard
   - module: tool-filesystem
     source: git+https://github.com/microsoft/amplifier-module-tool-filesystem@main
 

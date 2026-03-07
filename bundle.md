@@ -28,4 +28,3 @@ delegate(agent="dotnet-ops:dotnet-ops", instruction="Add Newtonsoft.Json package
 delegate(agent="dotnet-ops:dotnet-ops", instruction="Run tests with coverage")
 ```
 
-@dotnet-ops:context/delegation-instructions.md

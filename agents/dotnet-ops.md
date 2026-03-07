@@ -18,6 +18,33 @@ meta:
     DO NOT use bash or pwsh directly for dotnet commands - this agent handles
     platform differences and has safety protocols you lack.
 
+    <example>
+    Context: User needs to create a new .NET project
+    user: 'Create a new ASP.NET Web API project called OrderService'
+    assistant: 'I'll delegate to dotnet-ops to scaffold the project with the correct template and framework.'
+    <commentary>
+    Project creation with dotnet new triggers this agent. It handles template selection and cross-platform paths.
+    </commentary>
+    </example>
+
+    <example>
+    Context: User wants to run tests or check build status
+    user: 'Run the unit tests and show me any failures'
+    assistant: 'I'll delegate to dotnet-ops to build and run the test suite with detailed output.'
+    <commentary>
+    dotnet test with verbosity and filtering is this agent's domain. It detects the platform and picks the right shell.
+    </commentary>
+    </example>
+
+    <example>
+    Context: User needs NuGet package work
+    user: 'Add Entity Framework Core to the project and check for outdated packages'
+    assistant: 'I'll use dotnet-ops to add the package and audit for outdated dependencies.'
+    <commentary>
+    NuGet operations (add, list --outdated, restore) must go through this agent, not raw bash.
+    </commentary>
+    </example>
+
 model_role: fast
 
 provider_preferences:
