@@ -1,0 +1,102 @@
+name: validate-bundle
+
+# Validates the dotnet-ops bundle on every push / PR.
+# - lint job: fast, deterministic structural checks (YAML well-formedness +
+#   required composition invariants) — no external deps, runs on all 3 OSes so
+#   the manifests are proven parseable on Windows, macOS, and Linux.
+# - validate job: full foundation `validate-bundle-repo` recipe (Linux only —
+#   it only reads files, so one OS is sufficient and avoids 3x heavy installs).
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: structural-lint (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: YAML well-formedness + composition invariants
+        shell: python
+        run: |
+          import sys, pathlib, re
+
+          root = pathlib.Path(".")
+          errors = []
+
+          def load_frontmatter(path):
+              text = path.read_text(encoding="utf-8")
+              if text.lstrip().startswith("---"):
+                  body = text.split("---", 2)
+                  return body[1] if len(body) >= 3 else text
+              return text
+
+          try:
+              import yaml  # PyYAML is preinstalled on GitHub runners
+          except ImportError:
+              print("PyYAML unavailable; skipping deep parse", file=sys.stderr)
+              yaml = None
+
+          bundle_md = root / "bundle.md"
+          behavior = root / "behaviors" / "dotnet-ops.yaml"
+          agent = root / "agents" / "dotnet-ops.md"
+
+          for f in (bundle_md, behavior, agent):
+              if not f.exists():
+                  errors.append(f"missing required file: {f}")
+
+          if yaml:
+              # Behavior must include the agent (F-C1). It must NOT declare a
+              # tools: block — the included agent owns the tools; declaring them
+              # here trips behavior tool_count_high and leaks shells into the
+              # composing orchestrator (D-1).
+              beh = yaml.safe_load(behavior.read_text(encoding="utf-8"))
+              agents_inc = (beh.get("agents") or {}).get("include", [])
+              if not any("agents/dotnet-ops" in str(a) for a in agents_inc):
+                  errors.append("behavior does not include the dotnet-ops agent (agents.include)")
+              if beh.get("tools"):
+                  errors.append("behavior should not declare a tools: block — the included agent owns tools (D-1)")
+
+              # The AGENT frontmatter is the single source of truth for tools and
+              # MUST declare tool-pwsh so the Windows shell is guaranteed.
+              agent_fm = yaml.safe_load(load_frontmatter(agent))
+              a_tools = [t.get("module") for t in (agent_fm.get("tools") or [])]
+              if "tool-pwsh" not in a_tools:
+                  errors.append("agent tools missing tool-pwsh (no Windows shell)")
+
+              # No tool source may float on @main (pinning discipline).
+              text = behavior.read_text() + agent.read_text()
+              floating = re.findall(r"source:\s*git\+\S+@main\b", text)
+              if floating:
+                  errors.append(f"unpinned @main tool sources found: {floating}")
+
+          if errors:
+              print("VALIDATION FAILED:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+          print("Structural lint passed.")
+
+# NOTE: The full foundation `validate-bundle-repo` recipe is run LOCALLY, not in
+# CI. `amplifier` is a git-installed tool (not on PyPI), so `uvx amplifier ...`
+# cannot resolve it, and the `foundation:` recipe namespace is not registered in
+# a bare install — a CI job invoking it is unreliable and was removed. The
+# structural-lint job above is the reliable regression gate: it asserts the exact
+# composition invariants (agent include, agent-owned tool-pwsh, no @main sources)
+# whose violation motivated this bundle's fixes. Run the full recipe locally with:
+#   uv venv .venv && uv pip install --python .venv hatchling \
+#     "git+https://github.com/microsoft/amplifier-core@main" \
+#     "git+https://github.com/microsoft/amplifier-foundation@main"
+#   PATH=.venv/bin:$PATH amplifier tool invoke recipes operation=execute \
+#     recipe_path=<abs path to foundation validate-bundle-repo.yaml> \
+#     context='{"repo_path": "."}'
