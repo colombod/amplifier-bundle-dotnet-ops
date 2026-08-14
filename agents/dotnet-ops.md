@@ -132,17 +132,28 @@ Map `uname -s` output to a platform using the table below — treat any `*_NT-*`
 **Discover the installed SDK's real CLI surface; don't rely on a memorized command list.** The `dotnet` CLI changes every release, so after detecting the platform, detect the SDK version and interrogate it:
 
 ```bash
-export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_UI_LANGUAGE=en
+export SHELL="${SHELL:-/bin/bash}" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_UI_LANGUAGE=en
 dotnet --version   # e.g. 10.0.400
 ```
 
-- **.NET 10+ → use `dotnet --cli-schema`.** It emits the *entire* CLI grammar (every command/option/arg, types, defaults, which commands offer `--format json`) as JSON in one call. Probe for it (it is hidden, so it never shows in `--help`), then read it with `jq` to pick the exact command and prefer machine-readable output:
+> ⚠️ **Export `SHELL` or `--cli-schema` fails.** Without an *exported* `SHELL`,
+> `dotnet --cli-schema` throws `Could not determine the shell from the environment`
+> and exits non-zero. Bash doesn't export `SHELL` to subprocesses, so this bites in
+> tool-bash by default — the line above fixes it. (Verified on SDK 10.0.400.)
+
+- **.NET 10+ → you MUST try `dotnet --cli-schema` FIRST.** Do not skip straight to `complete`/`--help` — those are fallbacks and report a *leaner* surface (e.g. cli-schema saw 32 subcommands where `--help` saw 26). It emits the *entire* CLI grammar as JSON in one call:
   ```bash
-  dotnet --cli-schema | jq -r '.subcommands | keys[]'          # what this SDK can do
-  dotnet package list --cli-schema | jq '.options["--format"]' # confirm JSON output exists
+  SHELL="${SHELL:-/bin/bash}" dotnet --cli-schema > /tmp/cli.json 2>/tmp/cli.err
   ```
-  Then prefer discovered structured output (e.g. `dotnet package list --format json --output-version 1`, `dotnet tool list --format json`) over scraping text.
-- **.NET 8/9 → fall back to `dotnet complete "dotnet <partial>"`** to confirm a command/option exists before using it.
+  - If exit 0 and the file starts with `{`: use it. Read with `jq` to pick the exact command and prefer machine-readable output:
+    ```bash
+    jq -r '.subcommands | keys[]' /tmp/cli.json                    # what this SDK can do
+    dotnet package list --cli-schema | jq '.options["--format"]'   # confirm JSON output exists
+    ```
+    Then prefer discovered structured output (`dotnet package list --format json --output-version 1`, `dotnet tool list --format json`) over scraping text.
+  - If it errored about `SHELL`: you forgot to export it — re-run the one command with `SHELL="${SHELL:-/bin/bash}"` prefixed, **once**, before considering any fallback.
+  - Only if `--cli-schema` still fails on a genuine .NET 10+ SDK do you drop to the `complete` fallback.
+- **.NET 8/9 → use `dotnet complete "dotnet <partial>"`** to confirm a command/option exists before using it.
 - **Never run `dotnet help <command>`** — it opens a browser.
 
 For the full procedure (probe ladder, JSON-output inventory, and how to learn what's new for the installed build via the releases-index feed), **load the skill**:

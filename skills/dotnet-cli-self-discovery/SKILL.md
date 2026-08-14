@@ -22,8 +22,16 @@ Set these once per session before parsing any output (they make output stable
 and quiet, and stop `--cli-schema` from emitting telemetry):
 
 ```bash
-export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_UI_LANGUAGE=en
+export SHELL="${SHELL:-/bin/bash}" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_UI_LANGUAGE=en
 ```
+
+> ⚠️ **`SHELL` must be EXPORTED or `dotnet --cli-schema` throws** `Could not
+> determine the shell from the environment - the SHELL environment variable was
+> not set` (exit 1, no output). This bites by default in agent/tool contexts:
+> **bash sets `SHELL` as a shell variable, not an exported one**, so a spawned
+> subprocess (a `tool-bash` call, CI, `incus/docker exec`) sees no `SHELL`.
+> Always export `SHELL="${SHELL:-/bin/bash}"` first — this single line is why the
+> primitive works or fails in practice. (Verified on SDK 10.0.400.)
 
 ## Step 1 — establish the version (works on every SDK)
 
@@ -58,7 +66,9 @@ Detect Tier 1 by **probing**, never by reading `--help` (the option is
 `Hidden=true`, so it never shows in help):
 
 ```bash
-if dotnet --cli-schema >/tmp/cli.json 2>/dev/null && head -c1 /tmp/cli.json | grep -q '{'; then
+# SHELL export is REQUIRED (see gotcha above) — inline it so the probe is self-contained.
+if SHELL="${SHELL:-/bin/bash}" dotnet --cli-schema >/tmp/cli.json 2>/dev/null \
+     && head -c1 /tmp/cli.json | grep -q '{'; then
   echo "Tier 1: cli-schema available"
 fi
 ```
@@ -148,10 +158,11 @@ Use `dotnet/sdk` GitHub releases only to answer "newest SDK build", not for feat
 
 ## One-shot bootstrap the agent can run
 ```bash
-export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_UI_LANGUAGE=en
+export SHELL="${SHELL:-/bin/bash}" DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_UI_LANGUAGE=en
 V=$(dotnet --version 2>/dev/null) || { echo "dotnet not found"; exit 1; }
 echo "SDK $V"
-if dotnet --cli-schema >/tmp/dotnet-cli-schema.json 2>/dev/null; then
+if dotnet --cli-schema >/tmp/dotnet-cli-schema.json 2>/dev/null \
+     && head -c1 /tmp/dotnet-cli-schema.json | grep -q '{'; then
   echo "discovery=cli-schema (.NET 10+)"
   jq -r '.subcommands | keys | join(" ")' /tmp/dotnet-cli-schema.json
 else
