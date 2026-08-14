@@ -1,7 +1,7 @@
 ---
 bundle:
   name: dotnet-ops
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     .NET CLI operations bundle. Provides a cross-platform specialist agent
     for .NET development — project creation, build, test, publish, NuGet

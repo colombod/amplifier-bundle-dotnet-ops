@@ -1,15 +1,20 @@
 bundle:
   name: dotnet-ops-behavior
-  version: 1.0.0
+  version: 1.1.0
   description: >-
     Adds dotnet-ops agent with cross-platform shell support.
     Compose onto any bundle for .NET CLI capabilities on Windows, Linux, or macOS.
 
-tools:
-  - module: tool-bash
-    source: git+https://github.com/microsoft/amplifier-module-tool-bash@main
-  - module: tool-filesystem
-    source: git+https://github.com/microsoft/amplifier-module-tool-filesystem@main
+# Thin behavior: include the agent + its routing instructions only.
+# The dotnet-ops agent declares its own tools (bash, pwsh, filesystem) in its
+# frontmatter and they mount in its sub-session — so this behavior deliberately
+# does NOT declare a tools: block. Declaring them here would push bash/pwsh into
+# the composing orchestrator's own tool surface, contradicting the delegation
+# instruction to never run dotnet CLI directly, and would re-introduce the
+# duplicate-drift bug this bundle just fixed.
+agents:
+  include:
+    - dotnet-ops:agents/dotnet-ops
 
 context:
   include:
