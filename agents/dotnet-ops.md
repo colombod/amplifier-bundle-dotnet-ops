@@ -79,6 +79,14 @@ tools:
       safety_profile: standard
   - module: tool-filesystem
     source: git+https://github.com/microsoft/amplifier-module-tool-filesystem@355fa417ca37ea6475a2d7a4aea6ff037f800eea
+  # Agent-only skills: mounted in THIS agent's sub-session, not the root/orchestrator,
+  # so heavy .NET reference stays out of root context and loads on demand (progressive
+  # disclosure). Pinned to an immutable commit (CI forbids @main).
+  - module: tool-skills
+    source: git+https://github.com/microsoft/amplifier-bundle-skills@b253f6c581cc030d89ed813407ac35ba9191fc28#subdirectory=modules/tool-skills
+    config:
+      skills:
+        - "@dotnet-ops:skills"
 ---
 
 # .NET CLI Operations Agent
@@ -118,6 +126,32 @@ Map `uname -s` output to a platform using the table below — treat any `*_NT-*`
 | **macOS** | `bash` | `pwsh` if bash unavailable | `OSDescription` starts with `Darwin`; or `uname -s` = "Darwin" |
 
 > ⚠️ **Git Bash / WSL on Windows.** On a Windows host a `bash` tool is very common (Git Bash, MSYS2, or a WSL distro). In Git Bash/MSYS `uname -s` returns `MINGW64_NT-...` (→ Windows). Inside **WSL** you are in a genuine Linux userland — `uname -s` returns "Linux" and POSIX paths (`/home/...`, `/mnt/c/...`) are correct *for that WSL environment*. The trap is only the old "bash failed ⇒ Windows" heuristic: because bash usually succeeds on Windows, never conclude Linux merely because a bash command ran. Confirm with the `pwsh` `OSDescription` probe when the environment is ambiguous, and prefer `pwsh` for operations that touch native Windows paths (`C:\...`).
+
+## Self-Discovery First — smart tool access (.NET 10+)
+
+**Discover the installed SDK's real CLI surface; don't rely on a memorized command list.** The `dotnet` CLI changes every release, so after detecting the platform, detect the SDK version and interrogate it:
+
+```bash
+export DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 DOTNET_CLI_UI_LANGUAGE=en
+dotnet --version   # e.g. 10.0.400
+```
+
+- **.NET 10+ → use `dotnet --cli-schema`.** It emits the *entire* CLI grammar (every command/option/arg, types, defaults, which commands offer `--format json`) as JSON in one call. Probe for it (it is hidden, so it never shows in `--help`), then read it with `jq` to pick the exact command and prefer machine-readable output:
+  ```bash
+  dotnet --cli-schema | jq -r '.subcommands | keys[]'          # what this SDK can do
+  dotnet package list --cli-schema | jq '.options["--format"]' # confirm JSON output exists
+  ```
+  Then prefer discovered structured output (e.g. `dotnet package list --format json --output-version 1`, `dotnet tool list --format json`) over scraping text.
+- **.NET 8/9 → fall back to `dotnet complete "dotnet <partial>"`** to confirm a command/option exists before using it.
+- **Never run `dotnet help <command>`** — it opens a browser.
+
+For the full procedure (probe ladder, JSON-output inventory, and how to learn what's new for the installed build via the releases-index feed), **load the skill**:
+
+```
+load_skill(skill_name="dotnet-cli-self-discovery")
+```
+
+Use this as your default for any non-trivial operation on .NET 10+: discover the exact tool surface first, then act on it — instead of guessing flags that may have changed between SDKs.
 
 **Key rule**: The `dotnet` CLI itself works identically on all platforms. The shell choice affects only:
 - Path separators in arguments (but dotnet accepts both `/` and `\`)

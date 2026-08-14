@@ -1,71 +1,69 @@
-// This repository packages a ".NET operations" helper for Amplifier: a single specialist assistant that runs and troubleshoots .NET projects, plus the instructions that tell the main assistant when to hand work over to it.
-
 digraph dotnet_ops {
     rankdir=LR
     fontname="Helvetica"
     fontsize=12
-    label=".NET Operations Helper — v1.1.0\nA ready-made add-on: one .NET specialist assistant and its hand-off instructions"
+    label="dotnet-ops v1.2.0 — bundle repo"
     labelloc=t
     labeljust=c
     nodesep=0.6
     ranksep=0.7
     bgcolor="white"
-    source_hash="a88c1b0e74ea3c8d4b7db3ccaa3d3db73c260ba2f588a45b84c8a98a3573a27b"
+    source_hash="b103838043982cde276da91ee1dcf7c04172a75a23f50efbd5177d0cb680a593"
 
     node [fontname="Helvetica", fontsize=11, style="filled,rounded"]
     edge [fontname="Helvetica", fontsize=9]
 
-    root_dotnet_ops [label="The Add-On Package (start here)\ndotnet-ops v1.1.0\n0 tools · 1 agents\n~194 tok aggregate", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", penwidth=2]
+    root_dotnet_ops [label="dotnet-ops v1.2.0\n0 tools · 1 agents\n~194 tok aggregate", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", penwidth=2]
 
     subgraph cluster_behaviors {
-        label="Capability Packs — what this add-on switches on"
+        label="Behaviors"
         style="filled"
         fillcolor="#f9f9f9"
         color="#999999"
 
-        beh_dotnet_ops_behavior [label="Turn On .NET Help\ndotnet-ops-behavior\n1 ctx\n~461 tok", shape=box, fillcolor="#e0f2f1", style="filled,rounded"]
+        beh_dotnet_ops_behavior [label="dotnet-ops-behavior\n1 ctx\n~461 tok", shape=box, fillcolor="#e0f2f1", style="filled,rounded"]
     }
 
     subgraph cluster_agents {
-        label="Specialist Assistants — who does the work"
+        label="Agents"
         style="filled"
         fillcolor="#f9f9f9"
         color="#999999"
 
-        agt_dotnet_ops [label="The .NET Specialist\nBuilds, tests and fixes .NET projects\ndotnet-ops · ~686 tok desc", shape=box, fillcolor="#c8e6c9", style="filled,rounded"]
+        agt_dotnet_ops [label="dotnet-ops\n~686 tok desc", shape=box, fillcolor="#c8e6c9", style="filled,rounded"]
     }
 
     subgraph cluster_context {
-        label="Written Instructions — background reading loaded with the pack"
+        label="Context Files"
         style="filled"
         fillcolor="#f9f9f9"
         color="#999999"
 
-        ctx_delegation_instructions_md [label="When To Call The Specialist\ndelegation-instructions.md\n~249 tok", shape=box, fillcolor="#e1bee7", style="filled,rounded"]
+        ctx_delegation_instructions_md [label="delegation-instructions.md\n~249 tok", shape=box, fillcolor="#e1bee7", style="filled,rounded"]
     }
 
     subgraph cluster_legend {
-        label="Legend — what each colour means"
+        label="Legend"
         style="filled"
         fillcolor="white"
         color="#cccccc"
         fontsize=9
 
-        leg_root [label="the package itself", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", fontsize=9]
-        leg_behavior [label="capability pack", shape=box, fillcolor="#e0f2f1", style="filled,rounded", fontsize=9]
-        leg_agent [label="specialist assistant", shape=box, fillcolor="#c8e6c9", style="filled,rounded", fontsize=9]
-        leg_module [label="reusable part", shape=box, fillcolor="#bbdefb", style="filled,rounded", fontsize=9]
-        leg_provider [label="AI service", shape=box, fillcolor="#e0e0e0", style="filled,rounded", fontsize=9]
-        leg_context [label="written instructions", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
-        leg_standalone [label="works on its own", shape=box, fillcolor="#80cbc4", style="filled,rounded", fontsize=9]
-        leg_experiment [label="experimental", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
-        leg_ext_cost [label="borrowed, adds cost", shape=box, fillcolor="#80cbc4", style="dashed", color="red", penwidth=2, fontsize=9]
-        leg_ext_muted [label="borrowed, no cost", shape=box, fillcolor="#f5f5f5", style="dashed", fontsize=9]
+        leg_root [label="root bundle", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", fontsize=9]
+        leg_behavior [label="behavior", shape=box, fillcolor="#e0f2f1", style="filled,rounded", fontsize=9]
+        leg_agent [label="agent", shape=box, fillcolor="#c8e6c9", style="filled,rounded", fontsize=9]
+        leg_module [label="module", shape=box, fillcolor="#bbdefb", style="filled,rounded", fontsize=9]
+        leg_provider [label="provider", shape=box, fillcolor="#e0e0e0", style="filled,rounded", fontsize=9]
+        leg_context [label="context", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
+        leg_standalone [label="standalone", shape=box, fillcolor="#80cbc4", style="filled,rounded", fontsize=9]
+        leg_experiment [label="experiment", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
+        leg_ext_cost [label="ext+cost", shape=box, fillcolor="#80cbc4", style="dashed", color="red", penwidth=2, fontsize=9]
+        leg_ext_muted [label="ext+no-cost", shape=box, fillcolor="#f5f5f5", style="dashed", fontsize=9]
     }
 
-    disclaimer [label="\"tok\" = rough size of the reading material the AI loads (~4 characters per token)\nSolid border = lives in this repository (size counted)\nDashed + red = borrowed from elsewhere, still adds hidden reading cost\nDashed + muted = borrowed from elsewhere, adds no reading cost\nNot counted: work done in side conversations, anything decided while running", shape=note, fillcolor="#eceff1", style="filled", fontsize=9]
+    disclaimer [label="Token estimates: ~4 chars/token\nSolid border = local (counted)\nDashed + red = external, hidden cost (not counted)\nDashed + muted = external, no cost\nExcludes: sub-session costs, runtime-dynamic", shape=note, fillcolor="#eceff1", style="filled", fontsize=9]
 
 
-    root_dotnet_ops -> beh_dotnet_ops_behavior [label="includes"]
+    root_dotnet_ops -> beh_dotnet_ops_behavior [label="composes"]
     beh_dotnet_ops_behavior -> ctx_delegation_instructions_md [style=dotted, color=purple]
 }

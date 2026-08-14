@@ -5,6 +5,23 @@ All notable changes to `amplifier-bundle-dotnet-ops` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-14
+
+Self-discovery: smart, version-accurate tool access on .NET 10+.
+
+### Added
+- **Agent-only skill `dotnet-cli-self-discovery`** (`skills/dotnet-cli-self-discovery/SKILL.md`):
+  the discover-don't-assume procedure — probe ladder (`dotnet --cli-schema` on
+  .NET 10+ → `dotnet complete` on .NET 8/9 → `--help`), the structured-JSON output
+  inventory, the `releases-index.json` "what's new" flow keyed on `dotnet --version`,
+  and guardrails (env pins; never `dotnet help <cmd>`).
+- **`tool-skills` wired into the agent** (pinned commit), with `config.skills:
+  ["@dotnet-ops:skills"]` — skills mount in the agent sub-session only, so the
+  heavy reference stays out of root/orchestrator context and loads on demand.
+- **"Self-Discovery First" section** in the agent: on .NET 10+, interrogate the
+  installed SDK with `dotnet --cli-schema` and prefer discovered JSON outputs
+  (`--format json`), with the .NET 8/9 `dotnet complete` fallback.
+
 ## [1.1.0] - 2026-08-14
 
 Ergonomics and cross-platform correctness pass (macOS / Windows / Linux).
