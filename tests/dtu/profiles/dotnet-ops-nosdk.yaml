@@ -1,0 +1,103 @@
+# DTU profile: no-SDK box for validating the dotnet-ops agent.
+#
+# A CLEAN Linux container with Amplifier + this bundle and deliberately NO .NET
+# SDK. This is the "missing SDK" state: the agent must detect that `dotnet` is
+# absent and report per-platform install guidance rather than a confusing error.
+#
+# ADAPT BEFORE USE: the `config.providers` block mirrors one host's Amplifier
+# provider setup. Replace it with YOUR provider configuration. See tests/dtu/README.md.
+#
+# Launch:
+#   amplifier-digital-twin launch tests/dtu/profiles/dotnet-ops-nosdk.yaml --name dotnet-ops-nosdk
+name: dotnet-ops-nosdk
+description: >
+  Clean Linux box with Amplifier + the dotnet-ops bundle and deliberately NO
+  .NET SDK, to validate the agent's missing-SDK detection path.
+
+base:
+  image: ubuntu:24.04
+  config:
+    limits.cpu: "4"
+
+# Provider credentials are passed through from the host env. Adapt to your setup.
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+    - name: anthropic-base-url
+      key_env: ANTHROPIC_BASE_URL
+    - name: openai
+      key_env: OPENAI_API_KEY
+    - name: openai-base-url
+      key_env: OPENAI_BASE_URL
+    - name: gemini
+      key_env: GOOGLE_API_KEY
+    - name: github-copilot
+      key_env: GITHUB_TOKEN
+
+provision:
+  setup_cmds:
+    - apt-get update && apt-get install -y git curl ca-certificates
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+
+    # Install the Amplifier CLI
+    - uv tool install git+https://github.com/microsoft/amplifier
+
+    # ADAPT: mirror YOUR host's config.providers. ${VAR} refs expand from passthrough.
+    - |
+      mkdir -p /root/.amplifier
+      cat > /root/.amplifier/settings.yaml << EOF
+      config:
+        providers:
+          - module: provider-anthropic
+            source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+            config:
+              api_key: ${ANTHROPIC_API_KEY}
+              base_url: ${ANTHROPIC_BASE_URL}
+              default_model: claude-opus-4-8
+              priority: 1
+          - module: provider-openai
+            source: git+https://github.com/microsoft/amplifier-module-provider-openai@main
+            config:
+              api_key: ${OPENAI_API_KEY}
+              base_url: ${OPENAI_BASE_URL}
+              default_model: gpt-5.5-pro
+              priority: 2
+          - module: provider-gemini
+            source: git+https://github.com/microsoft/amplifier-module-provider-gemini@main
+            config:
+              api_key: ${GOOGLE_API_KEY}
+              default_model: gemini-2.5-pro
+              priority: 3
+      EOF
+
+    # Compose the bundle under test onto every session
+    - amplifier bundle add git+https://github.com/colombod/amplifier-bundle-dotnet-ops@main --app
+
+    # Assert the SDK really is absent in this box (fail the launch if it leaked in)
+    - |
+      if command -v dotnet >/dev/null 2>&1; then
+        echo "FATAL - dotnet unexpectedly present"
+        exit 1
+      fi
+      echo "confirmed - no dotnet on PATH"
+
+    - amplifier --version
+    - amplifier bundle list
+
+    # Warm up lazy provider install so the readiness smoke does not race it
+    - 'amplifier run "Say exactly: warmup-ok"'
+
+update:
+  cmds:
+    - amplifier update --yes --force
+    - 'amplifier run "Say exactly: warmup-ok"'
+
+readiness:
+  - name: amplifier-installed
+    command: amplifier --version
+  - name: no-dotnet-sdk
+    command: bash -c '! command -v dotnet'
+  - name: providers-smoke
+    command: 'amplifier run "Say exactly: dtu-ready"'

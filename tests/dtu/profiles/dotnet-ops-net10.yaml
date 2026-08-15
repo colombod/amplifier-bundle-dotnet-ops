@@ -1,0 +1,140 @@
+# DTU profile: .NET 10 box for validating the dotnet-ops agent.
+#
+# Stands up a Linux container with the .NET 10 SDK + Amplifier + this bundle
+# (github.com/colombod/amplifier-bundle-dotnet-ops @ main). This is where the
+# "self-discovery-first" capability applies: `dotnet --cli-schema` (JSON grammar
+# of the whole CLI) and discovered `--format json` outputs.
+#
+# The SDK is staged via the official dotnet-install.sh (--channel 10.0) into
+# /usr/share/dotnet, with DOTNET_ROOT/PATH wired globally through /etc/profile.d/
+# (dotnet-install.sh does NOT set DOTNET_ROOT), plus the SHELL export that
+# `dotnet --cli-schema` requires (see the comment on that line).
+#
+# ADAPT BEFORE USE: the `config.providers` block below mirrors one particular
+# host's Amplifier provider setup (module sources, model names, env-var names).
+# Replace it with YOUR provider configuration and required keys. See tests/dtu/README.md.
+#
+# Launch:
+#   amplifier-digital-twin launch tests/dtu/profiles/dotnet-ops-net10.yaml --name dotnet-ops-net10
+name: dotnet-ops-net10
+description: >
+  Linux box with the .NET 10 SDK plus Amplifier + the dotnet-ops bundle, to
+  validate the agent's .NET 10 self-discovery path (`dotnet --cli-schema`).
+
+base:
+  image: ubuntu:24.04
+  config:
+    limits.cpu: "4"
+
+# Provider credentials are passed through from the host env. Adapt to your setup.
+passthrough:
+  allow_external: true
+  services:
+    - name: anthropic
+      key_env: ANTHROPIC_API_KEY
+    - name: anthropic-base-url
+      key_env: ANTHROPIC_BASE_URL
+    - name: openai
+      key_env: OPENAI_API_KEY
+    - name: openai-base-url
+      key_env: OPENAI_BASE_URL
+    - name: gemini
+      key_env: GOOGLE_API_KEY
+    - name: github-copilot
+      key_env: GITHUB_TOKEN
+
+provision:
+  setup_cmds:
+    # libicu is a hard runtime dependency of the .NET CLI on Ubuntu.
+    - apt-get update && apt-get install -y git curl ca-certificates libicu74 python3
+
+    # -- Stage the .NET 10 SDK (official install script, channel-pinned) --
+    - curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && chmod +x /tmp/dotnet-install.sh
+    - /tmp/dotnet-install.sh --channel 10.0 --install-dir /usr/share/dotnet --no-path
+    - ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet
+
+    # dotnet-install.sh does not set DOTNET_ROOT; wire it (and the CLI guardrails
+    # the agent expects) for every login shell.
+    - |
+      cat > /etc/profile.d/dotnet.sh << 'EOF'
+      export DOTNET_ROOT=/usr/share/dotnet
+      export PATH="$DOTNET_ROOT:$DOTNET_ROOT/tools:$PATH"
+      export DOTNET_CLI_TELEMETRY_OPTOUT=1
+      export DOTNET_CLI_UI_LANGUAGE=en
+      export DOTNET_NOLOGO=1
+      # REQUIRED for `dotnet --cli-schema`. bash sets SHELL as a NON-exported
+      # shell variable, so a subprocess (agent tool-bash / CI / container exec)
+      # sees no SHELL and --cli-schema aborts with:
+      #   "Could not determine the shell from the environment - the SHELL
+      #    environment variable was not set."
+      # Exporting it is what makes self-discovery work in non-interactive contexts.
+      export SHELL="${SHELL:-/bin/bash}"
+      EOF
+      chmod 0644 /etc/profile.d/dotnet.sh
+
+    # Fail the launch loudly if the staged SDK is not actually 10.x
+    - |
+      v=$(dotnet --version)
+      echo "staged SDK version -> $v"
+      case "$v" in
+        10.*) ;;
+        *) echo "FATAL - expected 10.x"; exit 1 ;;
+      esac
+
+    # -- Amplifier --
+    - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - uv tool install git+https://github.com/microsoft/amplifier
+
+    # ADAPT: mirror YOUR host's config.providers. ${VAR} refs expand from passthrough.
+    - |
+      mkdir -p /root/.amplifier
+      cat > /root/.amplifier/settings.yaml << EOF
+      config:
+        providers:
+          - module: provider-anthropic
+            source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+            config:
+              api_key: ${ANTHROPIC_API_KEY}
+              base_url: ${ANTHROPIC_BASE_URL}
+              default_model: claude-opus-4-8
+              priority: 1
+          - module: provider-openai
+            source: git+https://github.com/microsoft/amplifier-module-provider-openai@main
+            config:
+              api_key: ${OPENAI_API_KEY}
+              base_url: ${OPENAI_BASE_URL}
+              default_model: gpt-5.5-pro
+              priority: 2
+          - module: provider-gemini
+            source: git+https://github.com/microsoft/amplifier-module-provider-gemini@main
+            config:
+              api_key: ${GOOGLE_API_KEY}
+              default_model: gemini-2.5-pro
+              priority: 3
+      EOF
+
+    # Compose the bundle under test onto every session
+    - amplifier bundle add git+https://github.com/colombod/amplifier-bundle-dotnet-ops@main --app
+
+    - amplifier --version
+    - amplifier bundle list
+
+    - mkdir -p /root/work
+
+    # Warm up lazy provider install so the readiness smoke does not race it
+    - 'amplifier run "Say exactly: warmup-ok"'
+
+update:
+  cmds:
+    - amplifier update --yes --force
+    - 'amplifier run "Say exactly: warmup-ok"'
+
+readiness:
+  - name: amplifier-installed
+    command: amplifier --version
+  - name: dotnet-10-sdk
+    command: bash -c 'dotnet --version | grep -q "^10\."'
+  - name: cli-schema-is-json
+    command: bash -c 'dotnet --cli-schema | python3 -c "import json,sys; json.load(sys.stdin)"'
+  - name: providers-smoke
+    command: 'amplifier run "Say exactly: dtu-ready"'
