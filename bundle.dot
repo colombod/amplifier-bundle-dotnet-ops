@@ -1,71 +1,71 @@
-// This repository packages a ready-made ".NET helper" assistant: a single expert persona, plus the instructions that tell the main assistant when to hand .NET work over to it.
-
+// This repository packages a ".NET operations" helper for Amplifier: a single specialist assistant that runs .NET build, test, and diagnostic commands correctly on Windows, macOS, and Linux.
 digraph dotnet_ops {
     rankdir=LR
     fontname="Helvetica"
     fontsize=12
-    label=".NET Operations Helper — v1.3.0\nA plug-in expert for building, testing and troubleshooting .NET projects"
+    label=".NET Operations Helper v1.3.0\nAn add-on package that teaches Amplifier to build, test, and diagnose .NET projects on any operating system"
     labelloc=t
     labeljust=c
     nodesep=0.6
     ranksep=0.7
     bgcolor="white"
-    source_hash="007a8be326c6a7d94732809a638c4d4713f1186438f099260949f7967f9ba3ee"
+    source_hash="b393b62b27bcdbef15b68c7211f68be3ac25df161c7fa38a92c2e7300a463ac8"
 
     node [fontname="Helvetica", fontsize=11, style="filled,rounded"]
     edge [fontname="Helvetica", fontsize=9]
 
-    root_dotnet_ops [label="The Package Itself\n.NET Operations Helper v1.3.0\n0 tools · 1 agents\n~194 tok aggregate", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", penwidth=2]
+    root_dotnet_ops [label="The Package Itself\n.NET Operations Helper v1.3.0\n0 tools · 0 agents\n~181 tok aggregate", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", penwidth=2]
 
     subgraph cluster_behaviors {
-        label="Add-On Capability\n(what gets switched on)"
+        label="Capabilities Added to Amplifier"
         style="filled"
         fillcolor="#f9f9f9"
         color="#999999"
 
-        beh_dotnet_ops_behavior [label="Turns On .NET Help\ndotnet-ops-behavior\n1 ctx\n~461 tok", shape=box, fillcolor="#e0f2f1", style="filled,rounded"]
+        beh_dotnet_ops_behavior [label="Handle .NET Work\nTurns on the .NET skill set\n1 ctx\n~1145 tok", shape=box, fillcolor="#e0f2f1", style="filled,rounded"]
     }
 
     subgraph cluster_agents {
-        label="The Specialist\n(who does the work)"
+        label="Specialist Assistants"
         style="filled"
         fillcolor="#f9f9f9"
         color="#999999"
 
-        agt_dotnet_ops [label="The .NET Expert\ndotnet-ops\n~686 tok desc", shape=box, fillcolor="#c8e6c9", style="filled,rounded"]
+        agt_dotnet_ops [label="The .NET Specialist\nRuns builds, tests, and diagnostics\n~686 tok desc", shape=box, fillcolor="#c8e6c9", style="filled,rounded"]
     }
 
     subgraph cluster_context {
-        label="Written Guidance\n(reference notes it reads)"
+        label="Written Instructions It Reads"
         style="filled"
         fillcolor="#f9f9f9"
         color="#999999"
 
-        ctx_delegation_instructions_md [label="When To Call The Expert\ndelegation-instructions.md\n~249 tok", shape=box, fillcolor="#e1bee7", style="filled,rounded"]
+        ctx_delegation_instructions_md [label="When to Call the Specialist\ndelegation-instructions.md\n~249 tok", shape=box, fillcolor="#e1bee7", style="filled,rounded"]
     }
 
     subgraph cluster_legend {
-        label="Colour Key"
+        label="Legend — What the Colors Mean"
         style="filled"
         fillcolor="white"
         color="#cccccc"
         fontsize=9
 
         leg_root [label="the package", shape=box, fillcolor="#80cbc4", style="filled,rounded,bold", fontsize=9]
-        leg_behavior [label="capability switched on", shape=box, fillcolor="#e0f2f1", style="filled,rounded", fontsize=9]
-        leg_agent [label="specialist helper", shape=box, fillcolor="#c8e6c9", style="filled,rounded", fontsize=9]
-        leg_module [label="add-on tool", shape=box, fillcolor="#bbdefb", style="filled,rounded", fontsize=9]
-        leg_provider [label="AI service used", shape=box, fillcolor="#e0e0e0", style="filled,rounded", fontsize=9]
-        leg_context [label="written guidance", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
+        leg_behavior [label="capability", shape=box, fillcolor="#e0f2f1", style="filled,rounded", fontsize=9]
+        leg_agent [label="specialist assistant", shape=box, fillcolor="#c8e6c9", style="filled,rounded", fontsize=9]
+        leg_module [label="tool", shape=box, fillcolor="#bbdefb", style="filled,rounded", fontsize=9]
+        leg_provider [label="AI service", shape=box, fillcolor="#e0e0e0", style="filled,rounded", fontsize=9]
+        leg_context [label="written instructions", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
         leg_standalone [label="works on its own", shape=box, fillcolor="#80cbc4", style="filled,rounded", fontsize=9]
         leg_experiment [label="experimental", shape=box, fillcolor="#e1bee7", style="filled,rounded", fontsize=9]
-        leg_ext_cost [label="comes from elsewhere\n(adds hidden cost)", shape=box, fillcolor="#80cbc4", style="dashed", color="red", penwidth=2, fontsize=9]
-        leg_ext_muted [label="comes from elsewhere\n(no added cost)", shape=box, fillcolor="#f5f5f5", style="dashed", fontsize=9]
+        leg_ext_cost [label="from elsewhere,\nadds hidden cost", shape=box, fillcolor="#80cbc4", style="dashed", color="red", penwidth=2, fontsize=9]
+        leg_ext_muted [label="from elsewhere,\nno added cost", shape=box, fillcolor="#f5f5f5", style="dashed", fontsize=9]
     }
 
-    disclaimer [label="\"tok\" = rough size of text the AI must read (~4 characters per token)\nSolid border = included in this package (size counted)\nDashed + red = borrowed from elsewhere, adds unseen size\nDashed + grey = borrowed from elsewhere, adds nothing\nNot counted: work done in side-conversations or decided while running", shape=note, fillcolor="#eceff1", style="filled", fontsize=9]
+    disclaimer [label="\"Tokens\" measure how much reading material the AI must load — more tokens means slower and costlier.\nToken estimates: ~4 chars/token\nSolid border = included in this package (counted)\nDashed + red = pulled in from elsewhere, hidden cost (not counted)\nDashed + muted = pulled in from elsewhere, no cost\nExcludes: work done in separate sessions, anything decided while running", shape=note, fillcolor="#eceff1", style="filled", fontsize=9]
 
 
-    root_dotnet_ops -> beh_dotnet_ops_behavior [label="includes"]
+    root_dotnet_ops -> beh_dotnet_ops_behavior [label="turns on"]
+    beh_dotnet_ops_behavior -> agt_dotnet_ops [label="provides"]
     beh_dotnet_ops_behavior -> ctx_delegation_instructions_md [style=dotted, color=purple]
 }

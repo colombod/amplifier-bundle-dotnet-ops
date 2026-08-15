@@ -7,10 +7,6 @@ bundle:
     for .NET development — project creation, build, test, publish, NuGet
     package management, and solution management.
 
-agents:
-  include:
-    - dotnet-ops:agents/dotnet-ops
-
 includes:
   - bundle: dotnet-ops:behaviors/dotnet-ops
 ---

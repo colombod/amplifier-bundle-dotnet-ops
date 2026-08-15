@@ -14,7 +14,7 @@ bundle:
 # duplicate-drift bug this bundle just fixed.
 agents:
   include:
-    - dotnet-ops:agents/dotnet-ops
+    - dotnet-ops:dotnet-ops
 
 context:
   include:
