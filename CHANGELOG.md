@@ -5,6 +5,38 @@ All notable changes to `amplifier-bundle-dotnet-ops` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-15
+
+Critical agent-loading fix + thin-agent refactor so self-discovery actually leads.
+
+### Fixed
+- **CRITICAL — the agent never actually loaded its instructions** (D-12). The
+  `agents.include` used the path form `dotnet-ops:agents/dotnet-ops`; agents must
+  be referenced by NAME (`dotnet-ops:dotnet-ops`). With the path form,
+  `resolve_agent_path` returned `None`, the agent file was never read, and the
+  delegated sub-session ran with **no system prompt** (`has_system=False`) — so
+  none of the agent body (safety protocol, shell selection, self-discovery
+  doctrine) ever reached the model. Proven with the real foundation loader
+  (now loads a 10,284-char instruction + 4 tools + model_role). This affected
+  every prior version.
+- **Layered composition**: `bundle.md` now includes only the behavior; the
+  behavior is the single place that includes the agent (`dotnet-ops:dotnet-ops`).
+  Composing just the behavior onto any bundle installs the agent — the root
+  bundle is a thin wrapper.
+
+### Changed
+- **Agent body slimmed 473 → 254 lines.** The large inline `.NET CLI Command
+  Reference` (catalog, RIDs, troubleshooting) was moved into a new agent-only
+  skill `dotnet-cli-command-reference`, so it can no longer short-circuit
+  self-discovery by handing the model a ready-made answer.
+- **New opening "Operating Procedure"** makes the order explicit: detect platform →
+  **self-discover the SDK (`dotnet --cli-schema` first on .NET 10+)** → act on the
+  discovered surface → load a skill for depth → honor safety/response contract.
+
+### Added
+- **Agent-only skill `dotnet-cli-command-reference`** — the static command catalog
+  as a load-on-demand fallback (quick-start; verify flags against the live schema).
+
 ## [1.2.1] - 2026-08-14
 
 Fixes to the self-discovery feature, caught by DTU-isolated testing (no-SDK + .NET 10).

@@ -1,15 +1,11 @@
 ---
 bundle:
   name: dotnet-ops
-  version: 1.2.1
+  version: 1.3.0
   description: >-
     .NET CLI operations bundle. Provides a cross-platform specialist agent
     for .NET development — project creation, build, test, publish, NuGet
     package management, and solution management.
-
-agents:
-  include:
-    - dotnet-ops:agents/dotnet-ops
 
 includes:
   - bundle: dotnet-ops:behaviors/dotnet-ops
